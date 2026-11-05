@@ -1,0 +1,401 @@
+ 
+
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>College Hostel Management System</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f1f5f9;
+            padding: 20px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #1e3a8a;
+        }
+
+        .container {
+            background: white;
+            max-width: 950px;
+            margin: 25px auto;
+            padding: 25px;
+            border-radius: 12px;
+        }
+
+        input, select {
+            width: 95%;
+            padding: 12px;
+            margin: 8px 0;
+            box-sizing: border-box;
+        }
+
+        button {
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            cursor: pointer;
+            border-radius: 5px;
+            margin-top: 8px;
+        }
+
+        button:hover {
+            background: #1d4ed8;
+        }
+
+        table {
+            width: 100%;
+            margin-top: 20px;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 10px;
+            border: 1px solid #ddd;
+            text-align: left;
+        }
+
+        th {
+            background: #eff6ff;
+        }
+
+        h2 {
+            color: #111827;
+        }
+    </style>
+</head>
+
+<body>
+
+<h1>College Hostel Management System</h1>
+
+<!-- STUDENT MANAGEMENT -->
+<div class="container">
+
+    <h2>Add Student</h2>
+
+    <form id="studentForm">
+        <input name="name" placeholder="Student Name" required>
+        <input name="roll_no" placeholder="Roll Number" required>
+        <input name="branch" placeholder="Branch" required>
+        <input name="phone" placeholder="Student Phone" required>
+        <input name="parent_phone" placeholder="Parent Phone" required>
+
+        <button type="submit">Add Student</button>
+    </form>
+
+    <h2>Student Details</h2>
+
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Roll Number</th>
+                <th>Branch</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody id="studentList"></tbody>
+    </table>
+</div>
+
+<!-- ROOM MANAGEMENT -->
+<div class="container">
+
+    <h2>Room Management</h2>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Room ID</th>
+                <th>Room Number</th>
+                <th>Block</th>
+                <th>Capacity</th>
+                <th>Occupied</th>
+                <th>Available</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody id="roomList"></tbody>
+    </table>
+</div>
+
+<!-- ROOM ALLOCATION -->
+<div class="container">
+
+    <h2>Room Allocation</h2>
+
+    <form id="allocationForm">
+
+        <label>Select Student</label>
+        <select id="studentSelect" required>
+            <option value="">Choose Student</option>
+        </select>
+
+        <br><br>
+
+        <label>Select Room</label>
+        <select id="roomSelect" required>
+            <option value="">Choose Room</option>
+        </select>
+
+        <br><br>
+
+        <button type="submit">Allocate Room</button>
+    </form>
+
+    <h2>Allocation Details</h2>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Student ID</th>
+                <th>Room ID</th>
+                <th>Allocation Date</th>
+                <th>Vacate Date</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody id="allocationList"></tbody>
+    </table>
+</div>
+
+<!-- VACATE ROOM -->
+<div class="container">
+
+    <h2>Vacate Room</h2>
+
+    <form id="vacateForm">
+
+        <label>Select Student</label>
+        <select id="vacateStudent" required>
+            <option value="">Choose Student</option>
+        </select>
+
+        <br><br>
+
+        <button type="submit">Vacate Room</button>
+    </form>
+</div>
+
+<script>
+
+// LOAD STUDENTS
+async function loadStudents() {
+    const response = await fetch("/students");
+    const students = await response.json();
+
+    document.getElementById("studentList").innerHTML =
+        students.map(s => `
+        <tr>
+            <td>${s.student_id}</td>
+            <td>${s.name}</td>
+            <td>${s.roll_no}</td>
+            <td>${s.branch}</td>
+            <td>
+                <button onclick="editStudent(${s.student_id})">
+                    Update
+                </button>
+            </td>
+        </tr>
+        `).join("");
+
+    document.getElementById("studentSelect").innerHTML =
+        '<option value="">Choose Student</option>' +
+        students.map(s =>
+            `<option value="${s.student_id}">
+                ${s.name} - ${s.roll_no}
+            </option>`
+        ).join("");
+}
+
+// ADD STUDENT
+document.getElementById("studentForm").addEventListener(
+    "submit", async function(e) {
+
+        e.preventDefault();
+
+        const data = Object.fromEntries(new FormData(this));
+
+        const response = await fetch("/students", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify(data)
+        });
+
+        const result = await response.json();
+
+        alert(result.message || result.error);
+
+        if (response.ok) {
+            this.reset();
+            refreshAll();
+        }
+    }
+);
+
+// UPDATE STUDENT
+async function editStudent(id) {
+    const name = prompt("Enter updated student name:");
+    if (name === null || !name.trim()) return;
+
+    const response = await fetch("/students/" + id, {
+        method: "PUT",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({name})
+    });
+
+    const result = await response.json();
+    alert(result.message || result.error);
+
+    if (response.ok) refreshAll();
+}
+
+// LOAD ROOMS
+async function loadRooms() {
+    const response = await fetch("/rooms");
+    const rooms = await response.json();
+
+    document.getElementById("roomList").innerHTML =
+        rooms.map(room => `
+        <tr>
+            <td>${room.room_id}</td>
+            <td>${room.room_no}</td>
+            <td>${room.block_name}</td>
+            <td>${room.capacity}</td>
+            <td>${room.occupied}</td>
+            <td>${room.capacity - room.occupied}</td>
+            <td>${room.status}</td>
+        </tr>
+        `).join("");
+
+    document.getElementById("roomSelect").innerHTML =
+        '<option value="">Choose Room</option>' +
+        rooms.filter(r => r.occupied < r.capacity).map(r =>
+            `<option value="${r.room_id}">
+                Room ${r.room_no} - ${r.block_name}
+                (${r.capacity - r.occupied} available)
+            </option>`
+        ).join("");
+}
+
+// LOAD ALLOCATIONS
+async function loadAllocations() {
+    const response = await fetch("/allocations");
+    const allocations = await response.json();
+
+    document.getElementById("allocationList").innerHTML =
+        allocations.map(a => `
+        <tr>
+            <td>${a.student_id}</td>
+            <td>${a.room_id}</td>
+            <td>${a.allocation_date || ""}</td>
+            <td>${a.vacate_date || "-"}</td>
+            <td>${a.status}</td>
+        </tr>
+        `).join("");
+
+    const students = await fetch("/students").then(r => r.json());
+
+    const activeIds = allocations
+        .filter(a => a.status === "Active")
+        .map(a => String(a.student_id));
+
+    const activeStudents = students.filter(s =>
+        activeIds.includes(String(s.student_id))
+    );
+
+    document.getElementById("vacateStudent").innerHTML =
+        '<option value="">Choose Student</option>' +
+        activeStudents.map(s =>
+            `<option value="${s.student_id}">
+                ${s.name} - ${s.roll_no}
+            </option>`
+        ).join("");
+}
+
+// ALLOCATE ROOM
+document.getElementById("allocationForm").addEventListener(
+    "submit", async function(e) {
+
+        e.preventDefault();
+
+        const student_id =
+            document.getElementById("studentSelect").value;
+
+        const room_id =
+            document.getElementById("roomSelect").value;
+
+        const response = await fetch("/allocate", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({student_id, room_id})
+        });
+
+        const result = await response.json();
+
+        alert(result.message || result.error);
+
+        if (response.ok) {
+            this.reset();
+            refreshAll();
+        }
+    }
+);
+
+// VACATE ROOM
+document.getElementById("vacateForm").addEventListener(
+    "submit", async function(e) {
+
+        e.preventDefault();
+
+        const student_id =
+            document.getElementById("vacateStudent").value;
+
+        if (!student_id) return;
+
+        if (!confirm("Are you sure you want to vacate this room?")) {
+            return;
+        }
+
+        const response = await fetch("/vacate", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({student_id})
+        });
+
+        const result = await response.json();
+
+        alert(result.message || result.error);
+
+        if (response.ok) {
+            this.reset();
+            refreshAll();
+        }
+    }
+);
+
+// REFRESH ALL DATA
+async function refreshAll() {
+    try {
+        await loadStudents();
+        await loadRooms();
+        await loadAllocations();
+    } catch (error) {
+        console.error("Loading error:", error);
+        alert("Unable to load data. Check your server.");
+    }
+}
+
+// INITIAL LOAD
+refreshAll();
+
+</script>
+
+</body>
+</html>
